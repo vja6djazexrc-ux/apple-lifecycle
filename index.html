@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Apple Lifecycle — 3D growth simulator</title>
+    <meta name="description" content="Interactive Three.js simulation of an apple tree growing from seed to harvest, season by season, with live growth data." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+    </script>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="3D apple tree scene"></canvas>
+    <div id="loading" role="status"><div class="spinner"></div><span>Growing the orchard…</span></div>
+
+    <!-- stage + stats -->
+    <section id="info" class="panel collapsible" aria-label="Current stage">
+      <div class="panel-head">
+        <div class="brand">
+          <span class="logo" aria-hidden="true">🍎</span>
+          <div>
+            <h1>Apple Lifecycle</h1>
+            <p class="muted">Seed → tree → blossom → fruit</p>
+          </div>
+        </div>
+        <button class="icon-btn collapse-btn" data-target="info" aria-label="Collapse panel" title="Collapse">–</button>
+      </div>
+      <div class="panel-body">
+        <div class="when">
+          <span id="season-chip" class="chip"></span>
+          <span id="date-label" class="muted"></span>
+        </div>
+        <h2 id="stage-name">—</h2>
+        <p id="stage-text" class="stage-text"></p>
+        <div id="tiles" class="tiles"></div>
+      </div>
+    </section>
+
+    <!-- conditions + charts -->
+    <aside id="side" class="panel collapsible" aria-label="Growing conditions and data">
+      <div class="panel-head">
+        <h3>Growing conditions</h3>
+        <div class="head-actions">
+          <button id="reset-cond" class="text-btn" title="Reset all conditions to the regional normal">Reset</button>
+          <button class="icon-btn collapse-btn" data-target="side" aria-label="Collapse panel" title="Collapse">–</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="conditions" class="conditions"></div>
+        <div class="data-head">
+          <h3>Growth data</h3>
+          <div class="tabs" role="tablist">
+            <button role="tab" data-tab="fruit" aria-selected="true">Fruit</button>
+            <button role="tab" data-tab="climate" aria-selected="false">Climate</button>
+            <button role="tab" data-tab="tree" aria-selected="false">Tree</button>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="line-key" style="background: var(--series-1)"></span>Your conditions</span>
+          <span class="legend-item"><span class="line-key" style="background: var(--series-base)"></span>Regional baseline</span>
+          <button id="table-toggle" class="text-btn" aria-pressed="false">Table view</button>
+        </div>
+        <div id="charts"></div>
+        <div id="table-wrap" hidden></div>
+        <p class="footnote muted" id="chart-note"></p>
+      </div>
+    </aside>
+
+    <!-- view toolbar -->
+    <nav id="toolbar" class="panel" aria-label="View controls">
+      <div class="seg" role="group" aria-label="Camera">
+        <button data-cam="tree" title="Frame the whole tree (T)">Tree</button>
+        <button data-cam="branch" title="Close-up on a fruiting branch (B)">Branch</button>
+        <button data-cam="orchard" title="Wide orchard view (O)">Orchard</button>
+        <button data-cam="ground" title="Ground level (G)">Ground</button>
+      </div>
+      <label class="select">
+        <span class="sr-only">Variety</span>
+        <select id="variety" title="Apple variety"></select>
+      </label>
+      <button id="refs-btn" class="text-btn" aria-expanded="false" aria-controls="refs">References</button>
+      <button id="share-btn" class="text-btn" title="Copy a link to this exact view">Share link</button>
+      <button id="opts-btn" class="icon-btn" aria-expanded="false" aria-controls="opts" title="Display options">⚙</button>
+      <div id="refs" class="popover" hidden>
+        <p class="muted small">Reference photos and the matching simulated scene. Click one to jump there.</p>
+        <div class="refs-grid">
+          <button class="ref" data-ref="blossom"><img src="assets/ref/apple-example2.jpg" alt="Pink apple buds and an open white-pink blossom" /><span>Pink bud → bloom</span></button>
+          <button class="ref" data-ref="branch"><img src="assets/ref/apple-example1.jpg" alt="Branch with ripe red and golden apples" /><span>Ripe fruit on branch</span></button>
+          <button class="ref" data-ref="tree"><img src="assets/ref/apple-example3.jpg" alt="Orchard tree laden with red apples" /><span>Laden tree at harvest</span></button>
+        </div>
+      </div>
+      <div id="opts" class="popover" hidden>
+        <label class="check"><input type="checkbox" id="opt-autocam" checked /> Auto-frame camera as the tree grows</label>
+        <label class="check"><input type="checkbox" id="opt-wind" checked /> Wind</label>
+        <label class="check"><input type="checkbox" id="opt-shadows" checked /> Shadows</label>
+        <label class="check"><input type="checkbox" id="opt-bees" checked /> Bees during bloom</label>
+        <label class="check"><input type="checkbox" id="opt-rotate" /> Slow auto-rotate</label>
+        <label class="check"><input type="checkbox" id="opt-loop" /> Loop playback</label>
+      </div>
+    </nav>
+
+    <!-- timeline -->
+    <footer id="timeline" class="panel" aria-label="Timeline">
+      <div class="transport">
+        <button id="prev-stage" class="icon-btn" title="Previous stage ( [ )" aria-label="Previous stage">⏮</button>
+        <button id="play" class="play-btn" title="Play / pause (Space)" aria-label="Play">▶</button>
+        <button id="next-stage" class="icon-btn" title="Next stage ( ] )" aria-label="Next stage">⏭</button>
+      </div>
+      <div class="track">
+        <div id="strip" class="strip" aria-hidden="true"></div>
+        <input id="time" type="range" min="0" max="1000" step="0.1" value="0" aria-label="Growth timeline" />
+        <div id="ticks" class="ticks" aria-hidden="true"></div>
+      </div>
+      <div class="speed">
+        <label for="speed" class="muted small">Speed <output id="speed-out">1×</output></label>
+        <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" />
+      </div>
+    </footer>
+
+    <!-- inspector -->
+    <section id="inspector" class="panel" hidden aria-live="polite">
+      <div class="panel-head">
+        <div>
+          <h3 id="insp-title"></h3>
+          <p id="insp-sub" class="muted small"></p>
+        </div>
+        <button id="insp-close" class="icon-btn" aria-label="Close inspector">×</button>
+      </div>
+      <dl id="insp-rows" class="insp-rows"></dl>
+      <figure id="insp-spark-wrap" class="insp-spark">
+        <figcaption class="muted small" id="insp-spark-cap"></figcaption>
+        <svg id="insp-spark" class="chart-svg"></svg>
+      </figure>
+      <p id="insp-note" class="small"></p>
+      <div class="insp-actions">
+        <button id="insp-focus" class="text-btn">Focus</button>
+        <button id="insp-follow" class="text-btn" aria-pressed="false">Follow</button>
+        <button id="insp-pick" class="text-btn">Pick apple</button>
+      </div>
+    </section>
+
+    <div id="hint" class="hint">Drag to orbit 360° · Scroll / pinch to zoom · Right-drag to pan · Click an apple, blossom or seed</div>
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

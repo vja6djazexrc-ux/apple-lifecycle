@@ -1,0 +1,19 @@
+{
+  "name": "apple-growth-simulator",
+  "version": "1.0.0",
+  "description": "Interactive 3D simulation of an apple tree growing from seed to harvest, built with Three.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "build": "node scripts/build.mjs",
+    "vendor": "node scripts/vendor.mjs",
+    "shots": "node scripts/screenshot.mjs",
+    "smoke": "node scripts/smoke.mjs http://localhost:5173/"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.16.0",
+    "three": "^0.187.0"
+  }
+}
